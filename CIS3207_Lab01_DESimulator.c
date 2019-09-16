@@ -44,18 +44,18 @@ node* D2_Q = NULL;
 node* E_Q = NULL;
 
 //reset values to 0 when done for file read bit...
-int SEED = 1122;
+int SEED = 0;
 int INIT_TIME = 0;      //Beginning of simulation
-int FIN_TIME = 4000;       //End of Simulation
-int ARRIVE_MIN = 20;     //New process will enter sys at rand interval between min & max
-int ARRIVE_MAX = 80;
-float QUIT_PROB = 0.2;    //Prob process will exit sys after done executing on CPU
-int CPU_MIN = 5;        //Time a process spends executing on CPU rand interval between min & max
-int CPU_MAX = 50;
-int DISK1_MIN = 50;      //Time a process spends doing I/O on Disk rand interval between min & max
-int DISK1_MAX = 200;
-int DISK2_MIN = 50;
-int DISK2_MAX = 200;
+int FIN_TIME = 0;       //End of Simulation
+int ARRIVE_MIN = 0;     //New process will enter sys at rand interval between min & max
+int ARRIVE_MAX = 0;
+float QUIT_PROB = 0.0;  //Prob process will exit sys after done executing on CPU
+int CPU_MIN = 0;        //Time a process spends executing on CPU rand interval between min & max
+int CPU_MAX = 0;
+int DISK1_MIN = 0;      //Time a process spends doing I/O on Disk rand interval between min & max
+int DISK1_MAX = 0;
+int DISK2_MIN = 0;
+int DISK2_MAX = 0;
 
 int Time_CURRENT = 0;
 int Time_RANDOM = 0;
@@ -63,11 +63,11 @@ int CPU_NoT = 0;
 int D1_NoT = 0;
 int D2_NoT = 0;
 int E_NoT = 0;
-int TOTAL_NoT = 0;
+int TOTAL_NoT = 1;
 
-int Stat_CPU = IDLE;
-int Stat_D1 = IDLE;
-int Stat_D2 = IDLE;
+int CPU_STAT = IDLE;
+int D1_STAT = IDLE;
+int D2_STAT = IDLE;
 
 //PROTOTYPE FUNCTIONS-----------------------------------------------------
 
@@ -84,17 +84,14 @@ event pop(int* eTotal, node** eQ);
 void enQueue(event tsk, node** fQ, int* tTotal);
 event deQueue(int* tTotal, node** fQ);
 
-/*REMAINING UNFINISHED FUNCTIONS:
-//Handler functions
-void CPUHandler(event);
-void DISKHandler(event);
-*/
+//Handler fNs:
+void CPU_Handler(event);
+void DISK_Handler(event);
 
 
 int main() {
 
-/*FILE READ / COPY CODE:
-    //READ FILE / COPY VARIABLE VALUES:_______________________________________
+    //READ FILE / COPY VARIABLE VALUES:----------------------------------
     FILE *fptr;
     char varStrValues[12];
     int varValues[12];
@@ -125,7 +122,8 @@ int main() {
     DISK2_MIN = varValues[10];
     DISK2_MAX = varValues[11];
 
-    printf("\n\nSEED = %d", SEED);
+    printf("INITIAL VARIABLES:");
+    printf("\nSEED = %d", SEED);
     printf("\nINIT_TIME = %d", INIT_TIME);
     printf("\nFIN_TIME = %d", FIN_TIME);
     printf("\nARRIVE_MIN = %d", ARRIVE_MIN);
@@ -136,101 +134,74 @@ int main() {
     printf("\nDISK1_MIN = %d", DISK1_MIN);
     printf("\nDISK1_MAX = %d", DISK1_MAX);
     printf("\nDISK2_MIN = %d", DISK2_MIN);
-    printf("\nDISK2_MAX = %d", DISK2_MAX);
+    printf("\nDISK2_MAX = %d\n\n", DISK2_MAX);
 
     fclose(fptr);
-*/
 
-    //INTIALIZATION-------------------------------------------------------
+
+    //INTIALIZATION------------------------------------------------------
     Time_CURRENT = INIT_TIME;
     srand(SEED);
 
-    push(startEvent(E_NoT, SIMULATION_END, FIN_TIME), &E_Q, &E_NoT);
+    //
+    push(startEvent(0, SIMULATION_END, FIN_TIME), &E_Q, &E_NoT);
+    //printNodeContents(*E_Q);
+    push(startEvent(1, CPU_ARRIVAL, INIT_TIME), &E_Q, &E_NoT);
+    //printNodeContents(*E_Q);
 
-    printNodeContents(*E_Q);
-    printf("E_NoT: %d\n", E_NoT);
-
-    push(startEvent(E_NoT, CPU_ARRIVAL, INIT_TIME), &E_Q, &E_NoT);
-
-    printf("\n\n\n\n\n*E_Q: ");
-    printNodeContents(*E_Q);
-    printf("\n*E_Q->next: ");
-    printNodeContents(*E_Q->next);
-    printf("E_NoT: %d", E_NoT);
-
-    push(startEvent(E_NoT, DISK_ARRIVAL, randTime(ARRIVE_MAX, ARRIVE_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
-
-    printf("\n\n\n\n\n*E_Q: ");
-    printNodeContents(*E_Q);
-    printf("\n*E_Q->next: ");
-    printNodeContents(*E_Q->next);
-    printf("\n*E_Q->next->next: ");
-    printNodeContents(*E_Q->next->next);
-    printf("E_NoT: %d", E_NoT);
-
-    push(startEvent(E_NoT, DISK_FINISH, randTime(ARRIVE_MAX, ARRIVE_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
+    printf("\nEVENT ID: \tEVENT TYPE: \t    EVENT TIME: ");
 
 
-    printf("\n\n\n\n\n*E_Q: ");
-    printNodeContents(*E_Q);
-    printf("\n*E_Q->next: ");
-    printNodeContents(*E_Q->next);
-    printf("\n*E_Q->next->next: ");
-    printNodeContents(*E_Q->next->next);
-    printf("\n*E_Q->next->next->next: ");
-    printNodeContents(*E_Q->next->next->next);
-    printf("E_NoT: %d\n\n\n\n\n\n", E_NoT);
-
-    ///MAIN LOOP:_________________________________________________________
-    ///___________________________________________________________________
+    //MAIN LOOP:---------------------------------------------------------
     //Loop to execute EventQueue
-    while (E_NoT != 0) {
+    while (E_NoT != 0 && Time_CURRENT < FIN_TIME) {
+
         //pop event from top of EventQ to be serviced
         evnt = pop(&E_NoT, &E_Q);
-        printEventContents(evnt);
+        //printEventContents(evnt);
 
         //update current time
         Time_CURRENT = evnt.time;
-        printf("\nCurrent Time: %d\n", Time_CURRENT);
+        //printf("\nCurrent Time: %d\n", Time_CURRENT);
 
         //service task according to its event type
         switch (evnt.eType){
+
             case CPU_ARRIVAL:
-                //handle_job_arrival(event, EventQueue);
+                CPU_Handler(evnt);
                 break;
-                /*
+
             case CPU_FINISH:
-                handle_cpu_exit(event, EventQueue);
+                CPU_Handler(evnt);
                 break;
 
             case DISK_ARRIVAL:
-                DISKHandler(task);
+                DISK_Handler(evnt);
                 break;
 
             case DISK_FINISH:
-                DISKHandler(task);
+                DISK_Handler(evnt);
                 break;
 
             case SIMULATION_END:
-                printf("Simulation_end.\n");
+                printf("\n    %d \t\tSIMULATION_END \t\t%d\n", evnt.taskID, Time_CURRENT);
                 break;
-                */
-
         }
     }
     return 0;
 }
 
-//FUNCTIONS:______________________________________________________________
 
-//RANDOM TIME: given interval, return random time-------------------------
+///FUNCTIONS:____________________________________________________________
+
+//RANDOM TIME: given interval, return random time------------------------
 int randTime(int max, int min, int* curTime){
     int rTime = ((rand() % (max - min + 1)) + min) + *curTime;
     (*curTime) + rTime;
     return rTime;
 }
 
-//START EVENT: given data, return event-----------------------------------
+//START EVENT: given data, return event----------------------------------
 event startEvent(int tID, int type, int tme){
     event task;
     task.taskID = tID;
@@ -239,7 +210,7 @@ event startEvent(int tID, int type, int tme){
     return task;
 }
 
-//PRINT NODE CONTENTS: given node, print details of node------------------
+//PRINT NODE CONTENTS: given node, print details of node-----------------
 void printNodeContents(node a){
     printf("\n---------Contents of Node------------");
     printf("\nNode task taskID: \t%d", a.task.taskID);
@@ -248,7 +219,7 @@ void printNodeContents(node a){
     printf("\nNode next: \t\t%d\n", a.next);
 }
 
-//PRINT EVENT CONTENTS: given event, print details of event---------------
+//PRINT EVENT CONTENTS: given event, print details of event--------------
 void printEventContents(event a){
     printf("\n---------Contents of Event------------");
     printf("\nEvent task taskID: \t%d", a.taskID);
@@ -256,9 +227,10 @@ void printEventContents(event a){
     printf("\nEvent task event time: \t%d\n", a.time);
 }
 
-//PRIORITY QUEUE:_________________________________________________________
 
-//PUSH: given event, push a node with that event onto Event Queue---------
+///PRIORITY QUEUE:_______________________________________________________
+
+//PUSH: given event, push a node with that event onto Event Queue--------
 void push(event tsk, node** eQ, int* eTotal){
 
     //variable to help organize priority
@@ -296,7 +268,7 @@ void push(event tsk, node** eQ, int* eTotal){
     return;
 }
 
-//POP: given event Q, pop an event from top of eQ node--------------------
+//POP: given event Q, pop an event from top of eQ node-------------------
 event pop(int* eTotal, node** eQ) {
 
     //pull top priority node data
@@ -317,9 +289,10 @@ event pop(int* eTotal, node** eQ) {
     return task;
 }
 
-//FIFO QUEUEs:____________________________________________________________
 
-//ENQUEUE: given event, enqueue a node with that event onto FIFO queue----
+///FIFO QUEUEs:__________________________________________________________
+
+//ENQUEUE: given event, enqueue a node with that event onto FIFO queue---
 void enQueue(event tsk, node** fQ, int* tTotal){
 
     //variable to help link list
@@ -349,7 +322,7 @@ void enQueue(event tsk, node** fQ, int* tTotal){
     return;
 }
 
-//DEQUEUE: given fifo Q, dequeue an event from front of fQ node-----------
+//DEQUEUE: given fifo Q, dequeue an event from front of fQ node----------
 event deQueue(int* tTotal, node** fQ){
 
     //pull front of fQ node data
@@ -370,27 +343,123 @@ event deQueue(int* tTotal, node** fQ){
     return task;
 }
 
-///_______________________________________________________________________
 
+///EVENT HANDLERS:_______________________________________________________
 
+//CPU HANDLER: given an event, handle it---------------------------------
+void CPU_Handler(event tsk){
 
+    //create rand num between 0-1
+    float r, randNum;
+    r = rand();
+    randNum = r / RAND_MAX;
 
+    //check if event type is CPU_FINISH
+    if(tsk.eType == CPU_FINISH){
 
+        printf("\n   %d \t\tCPU_FINISH \t\t%d", tsk.taskID, Time_CURRENT);
+        CPU_STAT = IDLE;
 
+        //check if process will exit the system
+        if(randNum < QUIT_PROB){
 
+            printf("\n   %d \t\tEXITS SYSTEM \t\t%d", tsk.taskID, Time_CURRENT);
 
+        }else{
 
+            //enter process back into eQ for disk I/O
+            push(startEvent(evnt.eType, DISK_ARRIVAL, randTime(ARRIVE_MAX, ARRIVE_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
+        }
+    }
 
+    //check is event type is CPU_ARRIVAL
+    if(tsk.eType == CPU_ARRIVAL){
 
+        printf("\n   %d \t\tCPU_ARRIVAL \t\t%d" , tsk.taskID, Time_CURRENT);
 
+        //enter process into fQ for CPU
+        enQueue(tsk, &CPU_Q, &CPU_NoT);
+        TOTAL_NoT++;
+        push(startEvent(TOTAL_NoT, CPU_ARRIVAL, randTime(ARRIVE_MAX, ARRIVE_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
 
+        //check if CPU is available
+        if (CPU_STAT == IDLE){
 
+            printf("\n   %d \t\tSERVICED ON CPU \t%d" , tsk.taskID, Time_CURRENT);
 
+            //pull task from front of CPU fQ
+            tsk = deQueue(&CPU_NoT, &CPU_Q);
 
+            //enter process back into eQ to finish on CPU
+            push(startEvent(tsk.taskID, CPU_FINISH, randTime(CPU_MAX, CPU_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
+            CPU_STAT = BUSY;
+        }
+    }
+    return;
+}
 
+//DISK HANDLER: given an event, handle it--------------------------------
+void DISK_Handler(event tsk){
 
+    //check if event type is DISK_FINISH
+    if(tsk.eType == DISK_FINISH){
 
+        //check to see which Disk has a smaller Q, finish task at smaller Q
+        if(D1_NoT <= D2_NoT){
 
+            printf("\n   %d \t\tDISK1_FINISH \t\t%d", tsk.taskID, Time_CURRENT);
+            D1_STAT = IDLE;
 
+        }else{
 
+            printf("\n   %d \t\tDISK2_FINISH \t\t%d", tsk.taskID, Time_CURRENT);
+            D2_STAT = IDLE;
+        }
+    }
 
+    //check is event type is DISK_ARRIVAL
+    if(tsk.eType == DISK_ARRIVAL){
+
+        //check to see which Disk has a smaller Q, service task at smaller Q
+        if(D1_NoT <= D2_NoT){
+
+            //enter process into fQ for D1
+            enQueue(tsk, &D1_Q, &D1_NoT);
+
+            printf("\n   %d \t\tDISK1_ARRIVAL \t\t%d", tsk.taskID, Time_CURRENT);
+
+            //check is D1 is available
+            if (D1_STAT == IDLE){
+
+                printf("\n   %d \t\tSERVICED ON D1 \t\t%d" , tsk.taskID, Time_CURRENT);
+
+                //pull task from front of D1 fQ
+                tsk = deQueue(&D1_NoT, &D1_Q);
+
+                //enter process back into eQ to finish on D1
+                push(startEvent(tsk.taskID, DISK_FINISH, randTime(DISK1_MAX, DISK1_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
+                D1_STAT = BUSY;
+            }
+        }else{
+
+            //enter process into fQ for D2
+            enQueue(tsk, &D2_Q, &D2_NoT);
+
+            printf("\n   %d \t\tDISK2_ARRIVAL \t\t%d", tsk.taskID, Time_CURRENT);
+
+            //check is D2 is available
+            if (D2_STAT == IDLE){
+
+                printf("\n   %d \t\tSERVICED ON D2 \t\t%d" , tsk.taskID, Time_CURRENT);
+
+                //pull task from front of D2 fQ
+                tsk = deQueue(&D2_NoT, &D2_Q);
+
+                //enter process back into eQ to finish on D2
+                push(startEvent(tsk.taskID, DISK_FINISH, randTime(DISK2_MAX, DISK2_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
+                D2_STAT = BUSY;
+            }
+        }
+    }
+    return;
+}
