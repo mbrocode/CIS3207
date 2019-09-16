@@ -58,23 +58,57 @@ int DISK2_MIN = 0;
 int DISK2_MAX = 0;
 
 int Time_CURRENT = 0;
-int Time_RANDOM = 0;
+CPU_STAT = IDLE;
+D1_STAT = IDLE;
+D2_STAT = IDLE;
+
+//NUM in QUEUES
 int CPU_NoT = 0;
+int CPU_NoT_MAX = 0;
+
 int D1_NoT = 0;
+int D1_NoT_MAX = 0;
+
 int D2_NoT = 0;
+int D2_NoT_MAX = 0;
+
 int E_NoT = 0;
+int E_NoT_MAX = 0;
+
 int TOTAL_NoT = 1;
 
-int CPU_STAT = IDLE;
-int D1_STAT = IDLE;
-int D2_STAT = IDLE;
+//TIME arrive-finish, idle-busy & MAX
+int CPU_IDLE_TIME = 0;
+int CPU_BUSY_TIME = 0;
+float CPU_AVG_RESP_TIME = 0.0;
+int CPU_MAX_TIME = 0;
+int CPU_TOTAL_TIME = 0;
+
+int D1_IDLE_TIME = 0;
+int D1_BUSY_TIME = 0;
+float D1_AVG_RESP_TIME = 0.0;
+int D1_MAX_TIME = 0;
+int D1_TOTAL_TIME = 0;
+
+int D2_IDLE_TIME = 0;
+int D2_BUSY_TIME = 0;
+float D2_AVG_RESP_TIME = 0.0;
+int D2_MAX_TIME = 0;
+int D2_TOTAL_TIME = 0;
+
 
 //PROTOTYPE FUNCTIONS-----------------------------------------------------
 
-int randTime(int max, int min, int* curTime);
+int randTime(int max, int min);
 event startEvent(int tID, int type, int tme);
 void printNodeContents(node a);
 void printEventContents(event a);
+
+float throughPut(int numJobsTotal);
+int findMax(int newData, int oldMax);
+float findAvg(int a, int b, float oldAvg);
+int findTotal(int newData, int oldTotal);
+float findUtil(int total);
 
 //Priority / Event Queue fNs:
 void push(event tsk, node** eQ, int* eTotal);
@@ -90,6 +124,11 @@ void DISK_Handler(event);
 
 
 int main() {
+
+    //WRITE CONSOLE OUTPUT TO FILE---------------------------------------
+    printf("\n\n                ! ATTENTION !                        \n");
+    printf("-----------CONSOLE OUTPUT ON log.txt-----------------\n\n");
+    freopen("log.txt","w",stdout);
 
     //READ FILE / COPY VARIABLE VALUES:----------------------------------
     FILE *fptr;
@@ -143,12 +182,14 @@ int main() {
     Time_CURRENT = INIT_TIME;
     srand(SEED);
 
-    //
-    push(startEvent(0, SIMULATION_END, FIN_TIME), &E_Q, &E_NoT);
+    push(startEvent(E_NoT, SIMULATION_END, FIN_TIME), &E_Q, &E_NoT);
+    E_NoT_MAX++;
     //printNodeContents(*E_Q);
-    push(startEvent(1, CPU_ARRIVAL, INIT_TIME), &E_Q, &E_NoT);
+    push(startEvent(E_NoT, CPU_ARRIVAL, INIT_TIME), &E_Q, &E_NoT);
+    E_NoT_MAX++;
     //printNodeContents(*E_Q);
 
+    printf("\t   Welcome to DESimulator!\n");
     printf("\nEVENT ID: \tEVENT TYPE: \t    EVENT TIME: ");
 
 
@@ -158,6 +199,7 @@ int main() {
 
         //pop event from top of EventQ to be serviced
         evnt = pop(&E_NoT, &E_Q);
+        E_NoT_MAX--;
         //printEventContents(evnt);
 
         //update current time
@@ -185,6 +227,48 @@ int main() {
 
             case SIMULATION_END:
                 printf("\n    %d \t\tSIMULATION_END \t\t%d\n", evnt.taskID, Time_CURRENT);
+
+                printf("\ntotalN: %d", TOTAL_NoT);
+                printf("\nCPU_NoT: %d", CPU_NoT);
+                printf("\nD1_NoT: %d", D1_NoT);
+                printf("\nD2_NoT: %d", D2_NoT);
+                printf("\nE_NoT: %d", E_NoT);
+
+                printf("\nMaximum Size of CPU Queue: %d", CPU_NoT_MAX);
+                float CPU_NoT_AVG = CPU_NoT / TOTAL_NoT;
+                printf("\nAverage Size of CPU Queue: %2.1f", CPU_NoT_AVG);
+                printf("\nMaximum Size of Disk1 Queue: %d", D1_NoT_MAX);
+                float D1_NoT_AVG = D1_NoT / TOTAL_NoT;
+                printf("\nAverage Size of Disk1 Queue: %2.1f", D1_NoT_AVG);
+                printf("\nMaximum Size of Disk2 Queue: %d", D2_NoT_MAX);
+                float D2_NoT_AVG = D2_NoT / TOTAL_NoT;
+                printf("\nAverage Size of Disk2 Queue: %2.1f", D2_NoT_AVG);
+                printf("\nMaximum Size of Event Queue: %d", E_NoT_MAX);
+                float E_NoT_AVG = E_NoT / TOTAL_NoT;
+                printf("\nAverage Size of Event Queue: %2.1f\n", E_NoT_AVG);
+
+                int cpuUtil = findUtil(CPU_NoT);
+                printf("\nUtilization of CPU: %2.1f", cpuUtil);
+                int d1Util = findUtil(D1_NoT);
+                printf("\nUtilization of D1: %2.1f", d1Util);
+                int d2Util = findUtil(D2_NoT);
+                printf("\nUtilization of D2: %2.1f\n", d2Util);
+
+                printf("\nMaximum Response Time of CPU: %d", CPU_MAX_TIME);
+                printf("\nAverage Response Time of CPU: %2.1f", CPU_AVG_RESP_TIME);
+                printf("\nMaximum Response Time of D1: %d", D1_MAX_TIME);
+                printf("\nAverage Response Time of D1: %2.1f", D1_AVG_RESP_TIME);
+                printf("\nMaximum Response Time of D2: %d", D2_MAX_TIME);
+                printf("\nAverage Response Time of D2: %2.1f\n", D2_AVG_RESP_TIME);
+
+                float cpuPut = throughPut(CPU_NoT);
+                printf("\nThroughput of CPU: %2.1f", cpuPut);
+                float d1Put = throughPut(CPU_NoT);
+                printf("\nThroughput of D1: %2.1f", d1Put);
+                float d2Put = throughPut(CPU_NoT);
+                printf("\nThroughput of D2: %2.1f\n", d2Put);
+
+                printf("\n\t  Thank you for using DESimulator!\n");
                 break;
         }
     }
@@ -195,9 +279,8 @@ int main() {
 ///FUNCTIONS:____________________________________________________________
 
 //RANDOM TIME: given interval, return random time------------------------
-int randTime(int max, int min, int* curTime){
-    int rTime = ((rand() % (max - min + 1)) + min) + *curTime;
-    (*curTime) + rTime;
+int randTime(int max, int min){
+    int rTime = ((rand() % (max - min + 1)) + min);
     return rTime;
 }
 
@@ -225,6 +308,33 @@ void printEventContents(event a){
     printf("\nEvent task taskID: \t%d", a.taskID);
     printf("\nEvent task event type: \t%d", a.eType);
     printf("\nEvent task event time: \t%d\n", a.time);
+}
+
+float throughPut(int numJobsTotal){
+    int totalTime = FIN_TIME-INIT_TIME;
+    return (numJobsTotal / totalTime);
+}
+
+int findMax(int newData, int oldMax){
+    if(newData > oldMax)
+        return newData;
+
+    return oldMax;
+}
+
+float findAvg(int a, int b, float oldAvg){
+    float newAvg = (((b - a) + oldAvg) / 2);
+    return newAvg;
+}
+
+int findTotal(int newData, int oldTotal){
+    int newTotal = oldTotal + newData;
+    return newTotal;
+}
+
+float findUtil(int total){
+    float util = (total / (FIN_TIME - INIT_TIME));
+    return util;
 }
 
 
@@ -284,7 +394,7 @@ event pop(int* eTotal, node** eQ) {
     free(newNode);
 
     //decrement event number of events
-    (*eTotal)--;
+    //(*eTotal)--;
 
     return task;
 }
@@ -338,7 +448,7 @@ event deQueue(int* tTotal, node** fQ){
     free(newNode);
 
     //decrement event number of events
-    (*tTotal)--;
+    (*tTotal)++;
 
     return task;
 }
@@ -357,42 +467,51 @@ void CPU_Handler(event tsk){
     //check if event type is CPU_FINISH
     if(tsk.eType == CPU_FINISH){
 
-        printf("\n   %d \t\tCPU_FINISH \t\t%d", tsk.taskID, Time_CURRENT);
+        printf("\n  %d \t\tCPU_FINISH \t\t%d", tsk.taskID, Time_CURRENT);
         CPU_STAT = IDLE;
+        printf("\n     \t\tCPU_IDLE \t\t%d", Time_CURRENT);
 
         //check if process will exit the system
         if(randNum < QUIT_PROB){
 
-            printf("\n   %d \t\tEXITS SYSTEM \t\t%d", tsk.taskID, Time_CURRENT);
+            printf("\n  %d \t\tEXITS SYSTEM \t\t%d", tsk.taskID, Time_CURRENT);
 
         }else{
 
             //enter process back into eQ for disk I/O
-            push(startEvent(evnt.eType, DISK_ARRIVAL, randTime(ARRIVE_MAX, ARRIVE_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
+            push(startEvent(tsk.taskID, DISK_ARRIVAL, randTime(ARRIVE_MAX, ARRIVE_MIN)+Time_CURRENT), &E_Q, &E_NoT);
+            E_NoT_MAX++;
         }
     }
 
     //check is event type is CPU_ARRIVAL
     if(tsk.eType == CPU_ARRIVAL){
 
-        printf("\n   %d \t\tCPU_ARRIVAL \t\t%d" , tsk.taskID, Time_CURRENT);
+        printf("\n  %d \t\tCPU_ARRIVAL \t\t%d" , tsk.taskID, Time_CURRENT);
 
         //enter process into fQ for CPU
         enQueue(tsk, &CPU_Q, &CPU_NoT);
+        CPU_NoT_MAX++;
+        CPU_NoT++;
         TOTAL_NoT++;
-        push(startEvent(TOTAL_NoT, CPU_ARRIVAL, randTime(ARRIVE_MAX, ARRIVE_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
+        push(startEvent(TOTAL_NoT, CPU_ARRIVAL, randTime(ARRIVE_MAX, ARRIVE_MIN)+Time_CURRENT), &E_Q, &E_NoT);
+        E_NoT_MAX++;
 
         //check if CPU is available
         if (CPU_STAT == IDLE){
 
-            printf("\n   %d \t\tSERVICED ON CPU \t%d" , tsk.taskID, Time_CURRENT);
+            printf("\n  %d \t\tSERVICED ON CPU \t%d" , tsk.taskID, Time_CURRENT);
 
             //pull task from front of CPU fQ
             tsk = deQueue(&CPU_NoT, &CPU_Q);
+            CPU_NoT_MAX--;
 
             //enter process back into eQ to finish on CPU
-            push(startEvent(tsk.taskID, CPU_FINISH, randTime(CPU_MAX, CPU_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
+            push(startEvent(tsk.taskID, CPU_FINISH, randTime(CPU_MAX, CPU_MIN)+Time_CURRENT), &E_Q, &E_NoT);
+            E_NoT_MAX++;
+
             CPU_STAT = BUSY;
+            printf("\n     \t\tCPU_BUSY \t\t%d", Time_CURRENT);
         }
     }
     return;
@@ -407,13 +526,15 @@ void DISK_Handler(event tsk){
         //check to see which Disk has a smaller Q, finish task at smaller Q
         if(D1_NoT <= D2_NoT){
 
-            printf("\n   %d \t\tDISK1_FINISH \t\t%d", tsk.taskID, Time_CURRENT);
+            printf("\n  %d \t\tDISK1_FINISH \t\t%d", tsk.taskID, Time_CURRENT);
             D1_STAT = IDLE;
+            printf("\n     \t\tD1_IDLE \t\t%d", Time_CURRENT);
 
         }else{
 
-            printf("\n   %d \t\tDISK2_FINISH \t\t%d", tsk.taskID, Time_CURRENT);
+            printf("\n  %d \t\tDISK2_FINISH \t\t%d", tsk.taskID, Time_CURRENT);
             D2_STAT = IDLE;
+            printf("\n     \t\tD2_IDLE \t\t%d", Time_CURRENT);
         }
     }
 
@@ -425,39 +546,51 @@ void DISK_Handler(event tsk){
 
             //enter process into fQ for D1
             enQueue(tsk, &D1_Q, &D1_NoT);
+            D1_NoT_MAX++;
+            D1_NoT++;
 
-            printf("\n   %d \t\tDISK1_ARRIVAL \t\t%d", tsk.taskID, Time_CURRENT);
+            printf("\n  %d \t\tDISK1_ARRIVAL \t\t%d", tsk.taskID, Time_CURRENT);
 
             //check is D1 is available
             if (D1_STAT == IDLE){
 
-                printf("\n   %d \t\tSERVICED ON D1 \t\t%d" , tsk.taskID, Time_CURRENT);
+                printf("\n  %d \t\tSERVICED ON D1 \t\t%d" , tsk.taskID, Time_CURRENT);
 
                 //pull task from front of D1 fQ
                 tsk = deQueue(&D1_NoT, &D1_Q);
+                D1_NoT_MAX--;
 
                 //enter process back into eQ to finish on D1
-                push(startEvent(tsk.taskID, DISK_FINISH, randTime(DISK1_MAX, DISK1_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
+                push(startEvent(tsk.taskID, DISK_FINISH, randTime(DISK1_MAX, DISK1_MIN)+Time_CURRENT), &E_Q, &E_NoT);
+                E_NoT_MAX++;
+
                 D1_STAT = BUSY;
+                printf("\n     \t\tD1_BUSY \t\t%d", Time_CURRENT);
             }
         }else{
 
             //enter process into fQ for D2
             enQueue(tsk, &D2_Q, &D2_NoT);
+            D2_NoT_MAX++;
+            D2_NoT++;
 
-            printf("\n   %d \t\tDISK2_ARRIVAL \t\t%d", tsk.taskID, Time_CURRENT);
+            printf("\n  %d \t\tDISK2_ARRIVAL \t\t%d", tsk.taskID, Time_CURRENT);
 
             //check is D2 is available
             if (D2_STAT == IDLE){
 
-                printf("\n   %d \t\tSERVICED ON D2 \t\t%d" , tsk.taskID, Time_CURRENT);
+                printf("\n  %d \t\tSERVICED ON D2 \t\t%d" , tsk.taskID, Time_CURRENT);
 
                 //pull task from front of D2 fQ
                 tsk = deQueue(&D2_NoT, &D2_Q);
+                D2_NoT_MAX--;
 
                 //enter process back into eQ to finish on D2
-                push(startEvent(tsk.taskID, DISK_FINISH, randTime(DISK2_MAX, DISK2_MIN, &Time_CURRENT)), &E_Q, &E_NoT);
+                push(startEvent(tsk.taskID, DISK_FINISH, randTime(DISK2_MAX, DISK2_MIN)+Time_CURRENT), &E_Q, &E_NoT);
+                E_NoT_MAX++;
+
                 D2_STAT = BUSY;
+                printf("\n     \t\tD2_BUSY \t\t%d", Time_CURRENT);
             }
         }
     }
